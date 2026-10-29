@@ -2,130 +2,121 @@ LFIA — Architecture
 
 1. Purpose
 
-LFIA (Local File Interface for AI) is an open-source layer that connects MCP-compatible AI systems to local filesystem operations.
+LFIA (Local File Interface for AI) is an open-source local file-access layer for AI systems compatible with the Model Context Protocol (MCP).
 
-Its purpose is to provide a reusable interface through which compatible AI applications can access permitted local files without requiring a separate file-access implementation for every AI system.
+LFIA acts as a local file server. It exposes only the files and folders explicitly authorized by the user.
 
-2. Design Goals
+LFIA is not an AI agent. It does not reason, analyze, or make decisions. The connected AI is responsible for understanding files and deciding what changes are needed. LFIA provides the permitted file operations and enforces access boundaries.
 
-- Use the Model Context Protocol (MCP) as the primary integration protocol.
-- Keep the local filesystem service independent of any specific AI model or provider.
-- Make installation and configuration straightforward.
-- Limit filesystem access to explicitly configured locations.
-- Separate file reading from file modification.
-- Provide predictable error handling and clear operation boundaries.
-- Design the core so additional AI integrations and operating systems can be supported later.
-
-3. High-Level Architecture
-
-The planned system consists of three main layers.
+2. Main Components
 
 A. AI Application
 
-An AI application that supports MCP connects to LFIA and discovers the tools it exposes.
+The AI application connects to LFIA through MCP.
 
-The AI application remains responsible for its own model, reasoning, and user interface.
+It is responsible for:
+
+- Understanding and analyzing file contents.
+- Working across related files in a project.
+- Deciding which files to read or modify.
+- Requesting permitted file operations.
+- Maintaining the optional project memory file.
 
 B. LFIA Local Service
 
-The local service implements the MCP interface and exposes a defined set of filesystem tools.
+LFIA runs locally and provides controlled access to authorized files.
 
-Planned tools include:
+Its planned operations include:
 
-- List permitted directories and files.
-- Read file contents.
-- Search files and text within permitted locations.
-- Create new files.
-- Edit existing files.
-- Save changes to permitted files.
+- Listing files and folders.
+- Reading file contents.
+- Searching file names and text.
+- Creating new files.
+- Editing and saving existing files.
 
-The exact tool names, schemas, and capabilities will be defined during implementation.
+LFIA validates each request and prevents access outside the configured locations. It does not decide whether an AI's proposed changes are logically correct.
 
-C. Local Filesystem
+C. Local Files and Projects
 
-The service operates on files stored on the user's device, subject to configured permissions and security checks.
+The user selects which folders or projects LFIA may expose.
 
-It must not automatically expose the entire filesystem.
+The initial version focuses on source code and text documents. Support for additional formats, such as PDF and Word, may be added later.
 
-4. Request Flow
+The AI may work with one line, multiple pages, or related files across a project. Large projects may need to be read in smaller parts.
 
-1. An MCP-compatible AI application connects to the LFIA service.
-2. The application discovers the available tools.
-3. The AI requests a filesystem operation.
-4. LFIA validates the request and checks access permissions.
-5. LFIA performs the permitted operation.
-6. The result or an appropriate error is returned to the AI application.
+3. Request Flow
 
-5. Initial Scope
+1. The user configures the permitted folders.
+2. A compatible AI application connects to LFIA through MCP.
+3. The AI requests access to specific files or operations.
+4. LFIA checks the requested paths and permissions.
+5. LFIA performs the allowed operation and returns the result.
+6. The AI analyzes the result and decides what to do next.
 
-The first prototype should focus on:
+4. Privacy Modes
 
-1. Starting a local MCP service.
-2. Configuring one or more permitted directories.
-3. Listing files in those directories.
-4. Reading supported text files.
-5. Searching file names and text.
-6. Creating or editing files only within permitted locations.
-7. Testing the service with at least one compatible AI application.
+LFIA is planned to support two mutually exclusive privacy modes.
 
-Binary files, complex document formats, graphical interfaces, and advanced recovery features may be added later.
+Mode 1: Protect Original Files
 
-6. Security Design
+This mode aims to protect original files from being copied or moved elsewhere as part of the workflow.
 
-Filesystem access is a security-sensitive capability.
+The AI may still receive file contents for analysis. If the connected AI uses a cloud provider, those contents may be transmitted outside the device.
 
-The implementation must:
+This mode does not guarantee that file contents remain private.
 
-- Enforce configured directory boundaries.
-- Validate paths and prevent path traversal.
-- Account for symbolic links and other filesystem edge cases.
-- Reject unauthorized operations.
-- Avoid unrestricted command execution.
-- Separate read-only tools from tools that modify files.
-- Provide clear errors without leaking unnecessary sensitive information.
-- Document that AI applications may transmit file content to external providers.
-- Never assume that MCP compatibility alone guarantees security.
+Mode 2: Strict Local Privacy
 
-The security model must be tested before the project is considered suitable for sensitive files.
+This mode aims to keep file contents on the user's device.
 
-7. Transport and Installation
+It requires a local AI or another verified architecture that prevents external transmission of protected content.
 
-MCP transport and process-launch requirements will be selected according to the compatibility of target AI applications.
+If the connected AI application or provider cannot meet this requirement, LFIA must block or reject the incompatible connection or operation.
 
-The initial target is Windows. Linux support may follow.
+Enabling either mode automatically disables the other.
 
-The project should prefer the simplest reliable installation method that works with the chosen MCP clients.
+5. Project Memory
 
-8. Implementation Language
+LFIA will not include a complex built-in memory engine.
 
-The implementation language has not yet been finalized.
+Instead, a project may use a normal Markdown file, such as "PROJECT_MEMORY.md", as its logbook.
 
-The choice should consider MCP library maturity, Windows compatibility, maintainability, testing, and ease of installation.
+The connected AI can read and update this file to record:
 
-9. Testing Strategy
+- Project goals and important decisions.
+- Reasons behind those decisions.
+- Files changed and a short summary of the changes.
+- Current status and known issues.
+- Completed work and next steps.
 
-Tests should cover:
+The memory file should summarize important information rather than duplicate entire files or conversations.
 
-- Allowed and denied paths.
-- Attempts to escape configured directories.
-- File listing and reading.
-- Search behavior.
-- File creation and modification.
-- Invalid requests and missing files.
-- Filesystem errors and permission failures.
-- Integration with an MCP-compatible client.
+LFIA only provides file access. The AI is responsible for maintaining the memory file. LFIA cannot guarantee that every AI application will update it.
 
-10. Current Status
+Local Git or optional hosting and synchronization services may be used for versioning. GitHub is not required. In Strict Local Privacy mode, protected memory and project contents must not be synchronized to cloud services.
 
-This document describes the planned architecture. The service, tools, security controls, and integrations are not yet implemented or verified.
+6. Security Boundaries
 
-11. Open Questions
+LFIA must:
 
-- Which MCP transport should the first prototype use?
-- Which text file formats should be supported initially?
-- How should write permissions be configured?
-- Should file modifications require a separate approval mechanism in the client?
-- Which MCP-compatible AI application should be used for the first integration test?
-- Which implementation language best meets the project's requirements?
+- Restrict access to user-authorized folders.
+- Reject attempts to access files outside those folders.
+- Validate paths and handle symbolic links safely.
+- Perform only supported and permitted file operations.
+- Avoid unrestricted operating-system command execution.
+- Protect secrets and avoid exposing unrelated system files.
+- Clearly document when file contents may be sent to external AI providers.
 
-These decisions should be resolved incrementally before expanding the implementation.
+MCP compatibility alone does not guarantee security.
+
+7. Compatibility
+
+LFIA is intended for AI applications that support MCP and can connect to a compatible local service.
+
+Compatibility must be tested with actual client applications. LFIA should remain independent of any particular AI model or provider.
+
+8. Current Status
+
+This document describes the planned architecture. The service, file operations, privacy enforcement, and integrations have not yet been implemented or verified.
+
+Implementation choices should be made incrementally, prioritizing simplicity, security, and practical use.
