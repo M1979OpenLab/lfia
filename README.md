@@ -1,30 +1,33 @@
+LFIA — Local File Interface for AI
 
-# FreeDesk AI
+An open-source layer for connecting MCP-compatible AI systems to local filesystem access.
 
-An open-source desktop AI assistant for working with user-selected files.
+Goal
 
-## Our Goal
+LFIA aims to make local file access available to compatible AI systems through the Model Context Protocol (MCP), reducing the need for manual file uploads and copy-paste workflows.
 
-FreeDesk AI aims to help users work with their files using AI while keeping control over their data and file changes.
+Planned Capabilities
 
-## Planned Features
+- Read and inspect permitted local files.
+- Search within permitted directories.
+- Edit and save files through controlled tools.
+- Support compatible AI applications through MCP.
+- Keep access limited to explicitly configured locations.
 
-- **Copy and Edit:** Work on a separate copy while keeping the original file unchanged.
-- **Edit Original:** Modify a user-selected original file only with explicit approval and appropriate backup safeguards.
-- **User Control:** Work only with files explicitly selected by the user.
-- **AI Provider Integration:** Explore support for OpenRouter and other AI providers.
-- **Cross-platform Direction:** Start with Windows, with Linux support planned for the future.
+Security Principles
 
-## Privacy and Safety
+- Restrict file access to authorized directories.
+- Avoid unrestricted access to the user's filesystem.
+- Make file modifications controlled and recoverable.
+- Never expose API keys or secrets in source code.
+- Document what data may be sent to external AI providers.
 
-File access, backups, and permissions will be designed carefully. Selecting a file alone does not guarantee complete system isolation. Security measures must be implemented and tested.
+Project Status
 
-## Project Status
+LFIA is in the planning and architecture stage. The capabilities described above are goals, not yet implemented features.
 
-This project is in its early planning and documentation stage. Planned features are not yet claims of implemented functionality.
+See "PROJECT_STATUS.md" (PROJECT_STATUS.md) and "ARCHITECTURE.md" (ARCHITECTURE.md) for project details.
 
-See [PROJECT_STATUS.md](PROJECT_STATUS.md) for project plans and next steps.
+License
 
-## License
-
-MIT License. See [LICENSE](LICENSE) for details.
+MIT License.
