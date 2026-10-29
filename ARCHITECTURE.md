@@ -1,98 +1,131 @@
-# FreeDesk AI — Architecture
+LFIA — Architecture
 
-## 1. Purpose
+1. Purpose
 
-This document describes the planned technical structure of FreeDesk AI. The architecture is a proposal and must be validated during implementation.
+LFIA (Local File Interface for AI) is an open-source layer that connects MCP-compatible AI systems to local filesystem operations.
 
-## 2. Technology Direction
+Its purpose is to provide a reusable interface through which compatible AI applications can access permitted local files without requiring a separate file-access implementation for every AI system.
 
-- Language: Python
-- Desktop UI: PySide6
-- First target platform: Windows
-- Future platform: Linux
-- AI providers: provider-independent integration, with OpenRouter as one possible option
+2. Design Goals
 
-## 3. Main Components
+- Use the Model Context Protocol (MCP) as the primary integration protocol.
+- Keep the local filesystem service independent of any specific AI model or provider.
+- Make installation and configuration straightforward.
+- Limit filesystem access to explicitly configured locations.
+- Separate file reading from file modification.
+- Provide predictable error handling and clear operation boundaries.
+- Design the core so additional AI integrations and operating systems can be supported later.
 
-### 3.1 User Interface
+3. High-Level Architecture
 
-Provides the desktop windows, file selection controls, operation-mode selection, confirmation prompts, and status messages.
+The planned system consists of three main layers.
 
-### 3.2 File Selection
+A. AI Application
 
-Allows the user to explicitly choose a file through a standard file picker. The application must not scan the whole computer or access unrelated files.
+An AI application that supports MCP connects to LFIA and discovers the tools it exposes.
 
-### 3.3 Workspace and Copy Manager
+The AI application remains responsible for its own model, reasoning, and user interface.
 
-Creates and manages separate working copies for Copy and Edit mode. It records which source file a working copy came from and avoids silently overwriting the original.
+B. LFIA Local Service
 
-### 3.4 Original File Editor
+The local service implements the MCP interface and exposes a defined set of filesystem tools.
 
-Handles Edit Original mode only after clear user confirmation. Before implementation, this component must have a documented backup, error-handling, and recovery strategy.
+Planned tools include:
 
-### 3.5 Backup and Recovery
+- List permitted directories and files.
+- Read file contents.
+- Search files and text within permitted locations.
+- Create new files.
+- Edit existing files.
+- Save changes to permitted files.
 
-Creates backups where feasible, detects failures, and helps users recover from unsuccessful operations. Backup behavior must be tested before direct editing is considered ready.
+The exact tool names, schemas, and capabilities will be defined during implementation.
 
-### 3.6 AI Provider Adapter
+C. Local Filesystem
 
-Provides a consistent interface for communicating with supported AI providers. API keys must not be committed to source control, and users must be informed before file content is sent to an external provider.
+The service operates on files stored on the user's device, subject to configured permissions and security checks.
 
-### 3.7 Tests and Logging
+It must not automatically expose the entire filesystem.
 
-Tests file operations, permission boundaries, copy integrity, failure cases, and recovery behavior. Logs must avoid exposing file contents, secrets, or unnecessary personal information.
+4. Request Flow
 
-## 4. File Operation Flows
+1. An MCP-compatible AI application connects to the LFIA service.
+2. The application discovers the available tools.
+3. The AI requests a filesystem operation.
+4. LFIA validates the request and checks access permissions.
+5. LFIA performs the permitted operation.
+6. The result or an appropriate error is returned to the AI application.
 
-### Copy and Edit
+5. Initial Scope
 
-1. The user selects a file.
-2. The application validates the selection and creates a separate working copy.
-3. The user requests an AI-assisted operation.
-4. The application sends only the necessary content to the chosen provider, with user awareness and consent.
-5. The result is applied to the working copy.
-6. The original file remains unchanged.
+The first prototype should focus on:
 
-### Edit Original
+1. Starting a local MCP service.
+2. Configuring one or more permitted directories.
+3. Listing files in those directories.
+4. Reading supported text files.
+5. Searching file names and text.
+6. Creating or editing files only within permitted locations.
+7. Testing the service with at least one compatible AI application.
 
-1. The user selects the original file.
-2. The application explains that the original will be modified.
-3. The user explicitly confirms.
-4. The application creates and verifies a backup where feasible.
-5. The application applies the approved change.
-6. The application reports success or failure and provides recovery guidance.
+Binary files, complex document formats, graphical interfaces, and advanced recovery features may be added later.
 
-## 5. Security Principles
+6. Security Design
 
-- Follow least-privilege access.
-- Operate only on user-selected files and resources necessary for the requested task.
-- Do not silently modify originals.
-- Keep API credentials out of source control.
-- Make external data transfers clear to the user.
-- Treat file selection and application checks as safeguards, not as a complete security sandbox.
-- Evaluate stronger isolation separately where needed.
+Filesystem access is a security-sensitive capability.
 
-## 6. Proposed Development Order
+The implementation must:
 
-1. Confirm requirements and security assumptions.
-2. Create the minimal PySide6 application.
-3. Implement file selection.
-4. Implement Copy and Edit mode.
-5. Add tests for original-file integrity and failure handling.
-6. Design and test backup and recovery.
-7. Implement Edit Original mode behind explicit confirmation.
-8. Add the AI provider adapter.
-9. Build and test on Windows.
-10. Evaluate Linux support.
+- Enforce configured directory boundaries.
+- Validate paths and prevent path traversal.
+- Account for symbolic links and other filesystem edge cases.
+- Reject unauthorized operations.
+- Avoid unrestricted command execution.
+- Separate read-only tools from tools that modify files.
+- Provide clear errors without leaking unnecessary sensitive information.
+- Document that AI applications may transmit file content to external providers.
+- Never assume that MCP compatibility alone guarantees security.
 
-## 7. Open Questions
+The security model must be tested before the project is considered suitable for sensitive files.
 
-- Which file formats should be supported first?
-- Should AI operations work on entire files or selected text initially?
-- How should the application manage temporary copies and their deletion?
-- What backup retention policy should be used?
-- Which AI providers should be supported first?
+7. Transport and Installation
 
-## 8. Current Status
+MCP transport and process-launch requirements will be selected according to the compatibility of target AI applications.
 
-This architecture is a planning document. Components and workflows described here are not yet implemented or verified. Update this file as technical decisions are tested and confirmed.
+The initial target is Windows. Linux support may follow.
+
+The project should prefer the simplest reliable installation method that works with the chosen MCP clients.
+
+8. Implementation Language
+
+The implementation language has not yet been finalized.
+
+The choice should consider MCP library maturity, Windows compatibility, maintainability, testing, and ease of installation.
+
+9. Testing Strategy
+
+Tests should cover:
+
+- Allowed and denied paths.
+- Attempts to escape configured directories.
+- File listing and reading.
+- Search behavior.
+- File creation and modification.
+- Invalid requests and missing files.
+- Filesystem errors and permission failures.
+- Integration with an MCP-compatible client.
+
+10. Current Status
+
+This document describes the planned architecture. The service, tools, security controls, and integrations are not yet implemented or verified.
+
+11. Open Questions
+
+- Which MCP transport should the first prototype use?
+- Which text file formats should be supported initially?
+- How should write permissions be configured?
+- Should file modifications require a separate approval mechanism in the client?
+- Which MCP-compatible AI application should be used for the first integration test?
+- Which implementation language best meets the project's requirements?
+
+These decisions should be resolved incrementally before expanding the implementation.
